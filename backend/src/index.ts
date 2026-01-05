@@ -6,6 +6,7 @@ import { initDB } from './utils/db';
 import { initFileStorage } from './storage/fileStorage';
 import authRoutes from './routes/auth';
 import vaultRoutes from './routes/vault';
+import sharingRoutes from './routes/sharing';
 import { apiLimiter } from './middleware/rateLimit';
 
 // Load environment variables
@@ -41,6 +42,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/vault', vaultRoutes);
+app.use('/api/v1/sharing', sharingRoutes);
 
 // 404 handler
 app.use((req, res) => {
