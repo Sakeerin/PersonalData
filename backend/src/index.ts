@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initDB } from './utils/db';
 import { initFileStorage } from './storage/fileStorage';
+import { initializeDefaultTemplates } from './vault/templates';
 import authRoutes from './routes/auth';
 import vaultRoutes from './routes/vault';
 import sharingRoutes from './routes/sharing';
@@ -11,6 +12,7 @@ import auditRoutes from './routes/audit';
 import alertsRoutes from './routes/alerts';
 import dsrRoutes from './routes/dsr';
 import { apiLimiter } from './middleware/rateLimit';
+import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +31,11 @@ initDB(DATABASE_URL);
 // Initialize file storage
 const FILE_STORAGE_PATH = process.env.FILE_STORAGE_PATH || './storage/files';
 initFileStorage({ storagePath: FILE_STORAGE_PATH });
+
+// Initialize default templates (async, non-blocking)
+initializeDefaultTemplates().catch(error => {
+  console.error('Error initializing templates:', error);
+});
 
 // Middleware
 app.use(helmet());
@@ -55,11 +62,8 @@ app.use((req, res) => {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
 });
 
-// Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
-});
+// Error handler middleware (must be last)
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

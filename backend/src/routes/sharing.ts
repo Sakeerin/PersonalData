@@ -4,6 +4,9 @@ import { apiLimiter } from '../middleware/rateLimit';
 import * as sharingService from '../access/sharing';
 import * as consentService from '../access/consent';
 import { createPermission, Permission, Action } from '../access/permissions';
+import { logSharing } from '../middleware/audit';
+import { AuditEventType } from '../audit/events';
+import { onShareAccess } from '../hooks/alertHooks';
 
 const router = Router();
 
@@ -74,6 +77,13 @@ router.post('/share', authenticate, async (req: Request, res: Response) => {
       });
     }
 
+    // Log share creation
+    await logSharing(req, AuditEventType.SHARE_CREATED, resource_type, resource_id, {
+      share_type,
+      share_id: shareId,
+      expires_at: expiryDate
+    });
+
     res.status(201).json({
       share_id: shareId,
       token,
@@ -135,12 +145,22 @@ router.delete('/shares/:share_id', authenticate, async (req: Request, res: Respo
     const userId = req.userId!;
     const shareId = req.params.share_id;
 
+    // Get share before revoking (for logging)
+    const share = await sharingService.getShareByToken(''); // We need share info
+    const shares = await sharingService.listShares(userId);
+    const shareToRevoke = shares.find(s => s.id === shareId);
+
     const revoked = await sharingService.revokeShare(shareId, userId);
 
     if (!revoked) {
       return res.status(404).json({
         error: { code: 'SHARE_NOT_FOUND', message: 'Share not found' }
       });
+    }
+
+    // Log share revocation
+    if (shareToRevoke) {
+      await logSharing(req, AuditEventType.SHARE_REVOKED, shareToRevoke.resource_type, shareToRevoke.resource_id);
     }
 
     res.status(204).send();

@@ -7,6 +7,8 @@ import * as filesService from '../vault/files';
 import * as templatesService from '../vault/templates';
 import { getFileStorage } from '../storage/fileStorage';
 import { serializeEncrypted, deserializeEncrypted } from '../crypto/encryption';
+import { logDataOperation } from '../middleware/audit';
+import { AuditEventType } from '../audit/events';
 
 const router = Router();
 
@@ -106,6 +108,9 @@ router.post('/records', authenticate, async (req: Request, res: Response) => {
       // In production, store DEK in data_keys table
       // For MVP, we'll skip this for now (client manages keys)
     }
+
+    // Log record creation
+    await logDataOperation(req, AuditEventType.RECORD_CREATED, 'record', recordId);
 
     res.status(201).json({
       id: recordId,
@@ -220,6 +225,9 @@ router.delete('/records/:id', authenticate, async (req: Request, res: Response) 
       });
     }
 
+    // Log record deletion
+    await logDataOperation(req, AuditEventType.RECORD_DELETED, 'record', recordId);
+
     res.status(204).send();
   } catch (error: any) {
     console.error('Delete record error:', error);
@@ -310,6 +318,9 @@ router.post('/files', authenticate, upload.single('file'), async (req: Request, 
       file.buffer
     );
 
+    // Log file upload
+    await logDataOperation(req, AuditEventType.FILE_UPLOADED, 'file', fileId);
+
     res.status(201).json({
       id: fileId,
       size: file.size,
@@ -342,6 +353,9 @@ router.get('/files/:id', authenticate, async (req: Request, res: Response) => {
 
     const fileData = await filesService.getFileData(fileId, userId);
 
+    // Log file download
+    await logDataOperation(req, AuditEventType.FILE_DOWNLOADED, 'file', fileId);
+
     res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
     res.setHeader('X-File-Metadata', JSON.stringify(file.encrypted_metadata));
@@ -370,6 +384,9 @@ router.delete('/files/:id', authenticate, async (req: Request, res: Response) =>
         error: { code: 'FILE_NOT_FOUND', message: 'File not found' }
       });
     }
+
+    // Log file deletion
+    await logDataOperation(req, AuditEventType.FILE_DELETED, 'file', fileId);
 
     res.status(204).send();
   } catch (error: any) {

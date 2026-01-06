@@ -86,10 +86,39 @@ export default function FilesPage() {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="text-sm text-primary-600 hover:text-primary-800">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await apiClient.downloadFile(file.id);
+                            const blob = new Blob([response.data]);
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `file_${file.id}`;
+                            a.click();
+                          } catch (error) {
+                            console.error('Error downloading file:', error);
+                            alert('Failed to download file');
+                          }
+                        }}
+                        className="text-sm text-primary-600 hover:text-primary-800"
+                      >
                         Download
                       </button>
-                      <button className="text-sm text-red-600 hover:text-red-800">
+                      <button
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to delete this file?')) {
+                            try {
+                              await apiClient.deleteFile(file.id);
+                              loadFiles();
+                            } catch (error) {
+                              console.error('Error deleting file:', error);
+                              alert('Failed to delete file');
+                            }
+                          }
+                        }}
+                        className="text-sm text-red-600 hover:text-red-800"
+                      >
                         Delete
                       </button>
                     </div>

@@ -7,6 +7,9 @@ import * as exportService from '../dsr/export';
 import * as deletionService from '../dsr/deletion';
 import * as retentionService from '../dsr/retention';
 import * as consentService from '../access/consent';
+import { logDataOperation, logSecurity } from '../middleware/audit';
+import { AuditEventType } from '../audit/events';
+import { onDataExport } from '../hooks/alertHooks';
 
 const router = Router();
 
@@ -20,6 +23,15 @@ router.post('/export', authenticate, sensitiveOperationLimiter, async (req: Requ
     const format = (req.query.format as 'zip' | 'json' | 'csv') || 'zip';
 
     const jobId = await exportService.createExportJob(userId, format);
+
+    // Log export request
+    await logDataOperation(req, AuditEventType.DATA_EXPORTED, 'user', userId, {
+      format,
+      job_id: jobId
+    });
+
+    // Check alert rules for burst exports
+    await onDataExport(userId, format);
 
     // Process export asynchronously (in production, use a job queue)
     exportService.processExportJob(jobId, userId).catch(error => {

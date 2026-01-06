@@ -3,7 +3,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { query, transaction } from '../utils/db';
+import { query } from '../utils/db';
 import { AlertSeverity, AlertStatus, AlertRule, Alert } from '../alerts/rules';
 import { notificationManager, createNotificationFromAlert } from '../alerts/notifier';
 import { createIncident, addIncidentAction } from '../alerts/incident';

@@ -9,7 +9,9 @@ import { serializeEncrypted } from '../crypto/encryption';
 import { authenticate } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 import { query, transaction } from '../utils/db';
-import { getDB } from '../utils/db';
+import { logAuth } from '../middleware/audit';
+import { AuditEventType } from '../audit/events';
+import { checkAlertRules } from '../services/alertService';
 
 const router = Router();
 
@@ -89,6 +91,12 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
       );
 
       return { userId, accessToken, refreshToken };
+    });
+
+    // Log registration event
+    await logAuth(req, AuditEventType.USER_REGISTER, {
+      device_id: deviceId,
+      device_name: device_name
     });
 
     // Return tokens and recovery codes (only shown once)
@@ -490,6 +498,9 @@ router.delete('/devices/:device_id', authenticate, async (req: Request, res: Res
         throw new Error('Device not found');
       }
     });
+
+    // Log device revocation
+    await logAuth(req, AuditEventType.DEVICE_REVOKED, { device_id: deviceId });
 
     res.status(204).send();
   } catch (error: any) {

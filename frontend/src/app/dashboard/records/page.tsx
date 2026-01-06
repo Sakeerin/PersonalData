@@ -25,6 +25,20 @@ export default function RecordsPage() {
     }
   };
 
+  const handleDelete = async (recordId: string) => {
+    if (!confirm('Are you sure you want to delete this record?')) {
+      return;
+    }
+
+    try {
+      await apiClient.deleteRecord(recordId);
+      loadRecords();
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      alert('Failed to delete record');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -87,6 +101,15 @@ export default function RecordsPage() {
                         {new Date(record.created_at).toLocaleDateString()}
                       </div>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleDelete(record.id);
+                      }}
+                      className="text-sm text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
                   </Link>
                 </li>
               ))}
